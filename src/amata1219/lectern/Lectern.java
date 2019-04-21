@@ -43,7 +43,7 @@ public class Lectern extends JavaPlugin implements Listener {
 
 	static{
 		String version = Bukkit.getServer().getClass().getPackage().getName().replaceFirst(".*(\\d+_\\d+_R\\d+).*", "$1");
-		String nms = "net.minecraft.server." + version;
+		String nms = "net.minecraft.server.v" + version;
 		Constructor<?> arg0 = null, arg1 = null, arg2 = null;
 		Method arg3 = null;
 		Field arg4 = null;
@@ -54,13 +54,13 @@ public class Lectern extends JavaPlugin implements Listener {
 			Class<?> PacketDataSerializer = Class.forName(nms + ".PacketDataSerializer");
 			arg1 = PacketDataSerializer.getConstructor(ByteBuf.class);
 			arg2 = Class.forName(nms + ".PacketPlayOutCustomPayload").getConstructor(MinecraftKey, PacketDataSerializer);
-			Class<?> CraftPlayer = Class.forName("org.bukkit.craftbukkit." + version + "CraftPlayer");
-			arg3 = CraftPlayer.getMethod("getHandle", (Class<?>) null);
-			Class<?> EntityPlayer = Class.forName(nms + "EntityPlayer");
+			Class<?> CraftPlayer = Class.forName("org.bukkit.craftbukkit.v" + version + ".entity.CraftPlayer");
+			arg3 = CraftPlayer.getMethod("getHandle");
+			Class<?> EntityPlayer = Class.forName(nms + ".EntityPlayer");
 			arg4 = EntityPlayer.getDeclaredField("playerConnection");
 			arg4.setAccessible(true);
-			Class<?> PlayerConnection = Class.forName(nms + "PlayerConnection");
-			arg5 = PlayerConnection.getMethod("sendPacket", (Class<?>) null);
+			Class<?> PlayerConnection = Class.forName(nms + ".PlayerConnection");//PlayerConnection
+			arg5 = PlayerConnection.getMethod("sendPacket", Class.forName(nms + ".Packet"));
 		}catch(Exception e){
 			e.printStackTrace();
 		}
@@ -70,7 +70,6 @@ public class Lectern extends JavaPlugin implements Listener {
 		getHandle = arg3;
 		playerConnection = arg4;
 		sendPacket = arg5;
-
 	}
 
 	@Override
@@ -107,12 +106,6 @@ public class Lectern extends JavaPlugin implements Listener {
 		if(e.getAction() != Action.RIGHT_CLICK_BLOCK)
 			return;
 
-		Player player = e.getPlayer();
-		if(!player.hasPermission("lectern.use")){
-			sendMessage(player, ChatColor.RED + (isJapanese(player) ? "あなたには書見台を使用する権限がありません。" : "You don't have permission to use lectern."));
-			return;
-		}
-
 		Block block = e.getClickedBlock();
 		Material material = block.getType();
 		if(material != Material.ENCHANTING_TABLE)
@@ -130,23 +123,35 @@ public class Lectern extends JavaPlugin implements Listener {
 				continue;
 
 			Sign sign = (Sign) relative.getState();
+			if(face != ((org.bukkit.material.Sign) sign.getData()).getFacing())
+				continue;
+
 			if(!SIGN_TITLE.equals(sign.getLine(0)))
 				continue;
-				find = true;
+
+			find = true;
 			break;
 		}
 
 		if(!find)
 			return;
 
+		Player player = e.getPlayer();
+		if(!player.hasPermission("lectern.use")){
+			e.setCancelled(true);
+			sendMessage(player, ChatColor.RED + (isJapanese(player) ? "あなたには書見台を使用する権限がありません。" : "You don't have permission to use lectern."));
+			return;
+		}
+
 		Inventory inventory = Bukkit.createInventory(null, 27, "§8Lectern");
 		for(ItemStack item : chest.getBlockInventory().getContents())
 			if(item != null && item.getType() == Material.WRITTEN_BOOK)
-				inventory.addItem(item);
+				inventory.setItem(inventory.firstEmpty(), item);
 
 		while(inventory.firstEmpty() != -1)
-			inventory.addItem(glass);
+			inventory.setItem(inventory.firstEmpty(), glass);
 
+		e.setCancelled(true);
 		player.openInventory(inventory);
 	}
 
@@ -180,7 +185,7 @@ public class Lectern extends JavaPlugin implements Listener {
 			Object data = newPacketDataSerializer.newInstance(buffer);
 			Object key = newMinecraftKey.newInstance("minecraft:book_open");
 			Object packet = newPacketPlayOutCustomPayload.newInstance(key, data);
-			Object entity = getHandle.invoke(player, (Object) null);
+			Object entity = getHandle.invoke(player);
 			Object connection = playerConnection.get(entity);
 			sendPacket.invoke(connection, packet);
 		}catch(Exception ex){

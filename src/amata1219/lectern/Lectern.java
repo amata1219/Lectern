@@ -30,13 +30,12 @@ import net.md_5.bungee.api.chat.TextComponent;
 
 public class Lectern extends JavaPlugin implements Listener {
 
-	private static Lectern plugin;
 	private static final String SIGN_TITLE = "[Lectern]";
 	private static final ItemStack BACKGROUND = new ItemStack(Material.LIGHT_GRAY_STAINED_GLASS_PANE);
-	private static Object packetPlayOutOpenBook;
-	private static Method getHandle;
-	private static Field playerConnection;
-	private static Method sendPacket;
+	private static final Object packetPlayOutOpenBook;
+	private static final Method getHandle;
+	private static final Field playerConnection;
+	private static final Method sendPacket;
 
 	static{
 		String version = Bukkit.getServer().getClass().getPackage().getName().replaceFirst(".*(\\d+_\\d+_R\\d+).*", "$1");
@@ -79,8 +78,6 @@ public class Lectern extends JavaPlugin implements Listener {
 
 	@Override
 	public void onEnable(){
-		plugin = this;
-
 		getServer().getPluginManager().registerEvents(this, this);
 	}
 
@@ -89,17 +86,13 @@ public class Lectern extends JavaPlugin implements Listener {
 		HandlerList.unregisterAll((JavaPlugin) this);
 	}
 
-	public static Lectern getPlugin(){
-		return plugin;
-	}
-
 	@EventHandler(ignoreCancelled = true)
 	public void onChange(SignChangeEvent e){
 		Player player = e.getPlayer();
 		if(player.hasPermission("lectern.create"))
 			return;
 
-		if(!SIGN_TITLE.equals(e.getLine(0))) return;
+		if(!SIGN_TITLE.equals(ChatColor.stripColor(e.getLine(0)))) return;
 
 		e.setCancelled(true);
 		sendMessage(player, ChatColor.RED + (isJapanese(player) ? "あなたには書見台を作成する権限がありません。" : "You don't have permission to create lectern."));
@@ -107,7 +100,7 @@ public class Lectern extends JavaPlugin implements Listener {
 
 	@EventHandler(ignoreCancelled = true)
 	public void onInteract(PlayerInteractEvent e){
-		if(e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+		if (e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
 
 		Block block = e.getClickedBlock();
 		Material material = block.getType();
@@ -115,18 +108,18 @@ public class Lectern extends JavaPlugin implements Listener {
 
 		Block down = block.getRelative(BlockFace.DOWN);
 		Material type = down.getType();
-		if(down == null || type != Material.CHEST && type != Material.TRAPPED_CHEST && type != Material.BARREL) return;
+		if(type != Material.CHEST && type != Material.TRAPPED_CHEST && type != Material.BARREL) return;
 
 		//https://www.spigotmc.org/threads/set-sign-texts-use-blockdata-api.370354/
 		boolean find = false;
 		for(BlockFace face : BlockFace.values()){
 			Block relative = block.getRelative(face);
-			if(relative == null || !relative.getType().toString().endsWith("_WALL_SIGN")) continue;
+			if(!relative.getType().toString().endsWith("_WALL_SIGN")) continue;
 
 			if(face != ((Directional) relative.getBlockData()).getFacing()) continue;
 
 			Sign sign = (Sign) relative.getState();
-			if(SIGN_TITLE.equals(sign.getLine(0))){
+			if(SIGN_TITLE.equals(ChatColor.stripColor(sign.getLine(0)))){
 				find = true;
 				break;
 			}
@@ -156,7 +149,7 @@ public class Lectern extends JavaPlugin implements Listener {
 	@EventHandler(ignoreCancelled = true)
 	public void onClick(InventoryClickEvent e){
 		String title = e.getView().getTitle();
-		if(title == null || !title.equals("§8Lectern")) return;
+		if(!title.equals("§8Lectern")) return;
 
 		e.setCancelled(true);
 

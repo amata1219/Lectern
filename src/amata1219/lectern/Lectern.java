@@ -3,7 +3,9 @@ package amata1219.lectern;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.HashSet;
 
+import com.google.common.collect.Sets;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -31,6 +33,7 @@ import net.md_5.bungee.api.chat.TextComponent;
 public class Lectern extends JavaPlugin implements Listener {
 
 	private static final String SIGN_TITLE = "[Lectern]";
+	private static final HashSet<Material> BOOK_STORAGE_TYPES = Sets.newHashSet(Material.CHEST, Material.TRAPPED_CHEST, Material.BARREL);
 	private static final ItemStack BACKGROUND = new ItemStack(Material.LIGHT_GRAY_STAINED_GLASS_PANE);
 	private static final Object packetPlayOutOpenBook;
 	private static final Method getHandle;
@@ -104,28 +107,44 @@ public class Lectern extends JavaPlugin implements Listener {
 
 		Block block = e.getClickedBlock();
 		Material material = block.getType();
-		if(material != Material.ENCHANTING_TABLE) return;
 
-		Block down = block.getRelative(BlockFace.DOWN);
-		Material type = down.getType();
-		if(type != Material.CHEST && type != Material.TRAPPED_CHEST && type != Material.BARREL) return;
+		Block bookStorage = null;
+		if (material == Material.ENCHANTING_TABLE) {
+			Block down = block.getRelative(BlockFace.DOWN);
+			if (isNotBookStorageType(down.getType())) return;
 
-		//https://www.spigotmc.org/threads/set-sign-texts-use-blockdata-api.370354/
-		boolean find = false;
-		for(BlockFace face : BlockFace.values()){
-			Block relative = block.getRelative(face);
-			if(!relative.getType().toString().endsWith("_WALL_SIGN")) continue;
+			boolean find = false;
+			for(BlockFace face : BlockFace.values()){
+				Block relative = block.getRelative(face);
+				if(!relative.getType().toString().endsWith("_WALL_SIGN")) continue;
 
-			if(face != ((Directional) relative.getBlockData()).getFacing()) continue;
+				if(face != ((Directional) relative.getBlockData()).getFacing()) continue;
 
-			Sign sign = (Sign) relative.getState();
-			if(SIGN_TITLE.equals(ChatColor.stripColor(sign.getLine(0)))){
-				find = true;
-				break;
+				Sign sign = (Sign) relative.getState();
+				if(isLecternSign(sign)){
+					find = true;
+					break;
+				}
 			}
+
+			if(!find) return;
+
+			bookStorage = down;
+		} else if (material.toString().endsWith("_WALL_SIGN")) {
+			BlockFace signFace = ((Directional) block.getBlockData()).getFacing();
+			Block blockFaced = block.getRelative(signFace.getOppositeFace());
+			if (block.getType() != Material.ENCHANTING_TABLE) return;
+
+			Sign sign = (Sign) block.getState();
+			if (!isLecternSign(sign)) return;
+
+			Block down = blockFaced.getRelative(BlockFace.DOWN);
+			if(isNotBookStorageType(down.getType())) return;
+
+			bookStorage = down;
+		} else {
+			return;
 		}
-		
-		if(!find) return;
 
 		Player player = e.getPlayer();
 		if(!player.hasPermission("lectern.use")){
@@ -135,7 +154,7 @@ public class Lectern extends JavaPlugin implements Listener {
 		}
 
 		Inventory inventory = Bukkit.createInventory(null, 27, "§8Lectern");
-		for(ItemStack item : ((Container) down.getState()).getInventory().getContents())
+		for(ItemStack item : ((Container) bookStorage.getState()).getInventory().getContents())
 			if(item != null && item.getType() == Material.WRITTEN_BOOK)
 				inventory.setItem(inventory.firstEmpty(), item);
 
@@ -144,6 +163,14 @@ public class Lectern extends JavaPlugin implements Listener {
 
 		e.setCancelled(true);
 		player.openInventory(inventory);
+	}
+
+	private static boolean isLecternSign(Sign sign) {
+		return SIGN_TITLE.equals(ChatColor.stripColor(sign.getLine(0)));
+	}
+
+	private static boolean isNotBookStorageType(Material type) {
+		return !BOOK_STORAGE_TYPES.contains(type);
 	}
 
 	@EventHandler(ignoreCancelled = true)

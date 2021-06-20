@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="Lectern:jar">
+    <output-path>$USER_HOME$/OneDrive/デスクトップ/Servers/Paper 1.16.5/plugins</output-path>
+    <root id="archive" name="Lectern.jar">
+      <element id="module-output" name="Lectern" />
+      <element id="file-copy" path="$PROJECT_DIR$/plugin.yml" />
+    </root>
+  </artifact>
+</component>

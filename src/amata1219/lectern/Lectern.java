@@ -133,7 +133,8 @@ public class Lectern extends JavaPlugin implements Listener {
 		} else if (material.toString().endsWith("_WALL_SIGN")) {
 			BlockFace signFace = ((Directional) block.getBlockData()).getFacing();
 			Block blockFaced = block.getRelative(signFace.getOppositeFace());
-			if (block.getType() != Material.ENCHANTING_TABLE) return;
+
+			if (blockFaced.getType() != Material.ENCHANTING_TABLE) return;
 
 			Sign sign = (Sign) block.getState();
 			if (!isLecternSign(sign)) return;
